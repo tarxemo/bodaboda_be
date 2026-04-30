@@ -51,8 +51,16 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'bodaboda_auth.CustomUser'
 
 GRAPHENE = {
-    'SCHEMA': 'bodaboda_be.mainschema.schema'
+    'SCHEMA': 'bodaboda_be.mainschema.schema',
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ],
 }
+
+AUTHENTICATION_BACKENDS = [
+    'graphql_jwt.backends.JSONWebTokenBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -146,9 +154,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'martinsanga230@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-app-password' # Set this in environment
-DEFAULT_FROM_EMAIL = 'BodaKitaa <martinsanga230@gmail.com>'
+EMAIL_HOST_USER = 'bodakitaa360@gmail.com'
+EMAIL_HOST_PASSWORD = '@Bodakitaa12'
+DEFAULT_FROM_EMAIL = 'BodaKitaa <bodakitaa360@gmail.com>'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
