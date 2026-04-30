@@ -37,9 +37,25 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Custom Apps
+    'bodaboda_auth',
+    
+    # Third Party Apps
+    'graphene_django',
+    'rest_framework',
+    'corsheaders',
+    'django_rest_passwordreset',
 ]
 
+AUTH_USER_MODEL = 'bodaboda_auth.CustomUser'
+
+GRAPHENE = {
+    'SCHEMA': 'bodaboda_be.mainschema.schema'
+}
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -48,6 +64,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'bodaboda_be.urls'
 
@@ -75,8 +93,12 @@ WSGI_APPLICATION = 'bodaboda_be.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'bodakitaa',
+        'USER': 'aegisbrowse',
+        'PASSWORD': 'Aegis123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -116,6 +138,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'martinsanga230@gmail.com'
+# EMAIL_HOST_PASSWORD = 'your-app-password' # Set this in environment
+DEFAULT_FROM_EMAIL = 'BodaKitaa <martinsanga230@gmail.com>'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

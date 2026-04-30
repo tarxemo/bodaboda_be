@@ -1,2 +1,8 @@
 Django>=4.2,<5.0
 gunicorn>=21.0,<23.0
+psycopg2-binary
+djangorestframework
+django-cors-headers
+graphene-django
+django-graphql-jwt
+django-rest-passwordreset
