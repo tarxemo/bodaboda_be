@@ -45,6 +45,10 @@ INSTALLED_APPS = [
     
     # Custom Apps
     'bodaboda_auth',
+    'rides',
+    'tracking',
+    'fleet',
+    'payments',
     
     # Third Party Apps
     'graphene_django',
