@@ -1,4 +1,4 @@
-from rest_framework import authentication, exceptions
+Workifrom rest_framework import authentication, exceptions
 from graphql_jwt.backends import JSONWebTokenBackend
 from graphql_jwt.exceptions import JSONWebTokenError
 from django.utils.translation import gettext_lazy as _
