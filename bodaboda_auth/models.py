@@ -80,3 +80,15 @@ class Ride(models.Model):
 
     def __str__(self):
         return f"Ride {self.id}: {self.pickup} → {self.destination} [{self.status}]"
+
+
+class PasswordResetToken(models.Model):
+    """Custom model to store password reset tokens without third-party dependencies."""
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='password_reset_tokens'
+    )
+    key = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"PasswordResetToken for {self.user.email}"

@@ -8,7 +8,7 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from .inputs import UserInput, PasswordResetInput, PasswordResetConfirmInput
 from .outputs import UserType
-from django_rest_passwordreset.models import ResetPasswordToken
+from .models import PasswordResetToken
 
 User = get_user_model()
 
@@ -228,11 +228,11 @@ class RequestPasswordReset(graphene.Mutation):
             user = User.objects.get(email=input.email)
 
             # Delete any existing tokens for this user first
-            ResetPasswordToken.objects.filter(user=user).delete()
+            PasswordResetToken.objects.filter(user=user).delete()
 
             # Generate a human-friendly token and save it
             token_key = generate_token(8)
-            ResetPasswordToken.objects.create(user=user, key=token_key)
+            PasswordResetToken.objects.create(user=user, key=token_key)
 
             # Send the premium email directly (not via signal)
             send_password_reset_email(user, token_key)
@@ -261,7 +261,7 @@ class ConfirmPasswordReset(graphene.Mutation):
     message = graphene.String()
 
     def mutate(self, info, input):
-        reset_password_token = ResetPasswordToken.objects.filter(key=input.token.upper()).first()
+        reset_password_token = PasswordResetToken.objects.filter(key=input.token.upper()).first()
         if not reset_password_token:
             return ConfirmPasswordReset(success=False, message="Invalid or expired token.")
 
@@ -269,7 +269,7 @@ class ConfirmPasswordReset(graphene.Mutation):
         user.set_password(input.password)
         user.save()
 
-        ResetPasswordToken.objects.filter(user=user).delete()
+        PasswordResetToken.objects.filter(user=user).delete()
 
         return ConfirmPasswordReset(success=True, message="Password reset successfully. You can now login.")
 

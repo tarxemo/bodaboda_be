@@ -52,9 +52,7 @@ INSTALLED_APPS = [
     
     # Third Party Apps
     'graphene_django',
-    'rest_framework',
     'corsheaders',
-    'django_rest_passwordreset',
 ]
 
 AUTH_USER_MODEL = 'bodaboda_auth.CustomUser'
@@ -168,12 +166,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
 DEFAULT_FROM_EMAIL = f'BodaKitaa <{EMAIL_HOST_USER}>'
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'bodaboda_auth.authentication.JSONWebTokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ],
-}
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

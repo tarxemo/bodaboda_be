@@ -16,9 +16,8 @@ class RideRequest(models.Model):
     ]
 
     VEHICLE_TYPE_CHOICES = [
-        ('economy', 'Economy Boda'),
-        ('deluxe', 'Deluxe Boda'),
-        ('express', 'Express Boda'),
+        ('ride', 'Boda Ride'),
+        ('delivery', 'Boda Delivery'),
     ]
 
     # Parties
@@ -33,7 +32,8 @@ class RideRequest(models.Model):
 
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
-    vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPE_CHOICES, default='economy')
+    vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPE_CHOICES, default='ride')
+    midway_stops = models.JSONField(null=True, blank=True, help_text="List of intermediate stops [{address, lat, lng}]")
 
     # Pickup Location
     pickup_address = models.CharField(max_length=512)
