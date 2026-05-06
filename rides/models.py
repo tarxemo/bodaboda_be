@@ -15,7 +15,7 @@ class RideRequest(models.Model):
         ('no_riders', 'No Riders Available'),
     ]
 
-    VEHICLE_TYPE_CHOICES = [
+    RIDE_TYPE_CHOICES = [
         ('ride', 'Boda Ride'),
         ('delivery', 'Boda Delivery'),
     ]
@@ -32,7 +32,7 @@ class RideRequest(models.Model):
 
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
-    vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPE_CHOICES, default='ride')
+    ride_type = models.CharField(max_length=20, choices=RIDE_TYPE_CHOICES, default='ride')
     midway_stops = models.JSONField(null=True, blank=True, help_text="List of intermediate stops [{address, lat, lng}]")
 
     # Pickup Location
@@ -97,9 +97,9 @@ class RideRating(models.Model):
 
 
 class FareRule(models.Model):
-    """Dynamic fare calculation rules per vehicle type."""
+    """Dynamic fare calculation rules per ride type."""
 
-    vehicle_type = models.CharField(max_length=20, unique=True)
+    ride_type = models.CharField(max_length=20, unique=True)
     base_fare_tzs = models.DecimalField(max_digits=10, decimal_places=2, help_text="Flat starting fare (TZS)")
     per_km_rate_tzs = models.DecimalField(max_digits=8, decimal_places=2, help_text="Fare per kilometer (TZS)")
     per_minute_rate_tzs = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('50.00'))
@@ -108,7 +108,7 @@ class FareRule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"FareRule [{self.vehicle_type}] — Base: {self.base_fare_tzs} TZS"
+        return f"FareRule [{self.ride_type}] — Base: {self.base_fare_tzs} TZS"
 
 
 class SurgeZone(models.Model):

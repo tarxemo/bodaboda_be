@@ -50,12 +50,12 @@ class EstimateRideMutation(graphene.Mutation):
         pickup_lng = graphene.Float(required=True)
         destination_lat = graphene.Float(required=True)
         destination_lng = graphene.Float(required=True)
-        vehicle_type = graphene.String(default_value='ride')
+        ride_type = graphene.String(default_value='ride')
         midway_stops = graphene.String(required=False)
 
     estimate = graphene.Field(RideEstimateType)
 
-    def mutate(self, info, pickup_lat, pickup_lng, destination_lat, destination_lng, vehicle_type, midway_stops=None):
+    def mutate(self, info, pickup_lat, pickup_lng, destination_lat, destination_lng, ride_type, midway_stops=None):
         import json
         user = info.context.user
         if user.is_anonymous:
@@ -77,7 +77,7 @@ class EstimateRideMutation(graphene.Mutation):
         for i in range(len(points)-1):
             total_dist += calculate_distance(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
         
-        rule = FareRule.objects.filter(vehicle_type=vehicle_type).first()
+        rule = FareRule.objects.filter(ride_type=ride_type).first()
         if not rule:
             base_fare = Decimal('1500') # Updated default
             per_km_rate = Decimal('700')
@@ -100,18 +100,18 @@ class RequestRideMutation(graphene.Mutation):
         destination_address = graphene.String(required=True)
         destination_lat = graphene.Float(required=True)
         destination_lng = graphene.Float(required=True)
-        vehicle_type = graphene.String(default_value='ride')
+        ride_type = graphene.String(default_value='ride')
         midway_stops = graphene.String(required=False)
 
     ride = graphene.Field(RideRequestType)
 
-    def mutate(self, info, pickup_address, pickup_lat, pickup_lng, destination_address, destination_lat, destination_lng, vehicle_type, midway_stops=None):
+    def mutate(self, info, pickup_address, pickup_lat, pickup_lng, destination_address, destination_lat, destination_lng, ride_type, midway_stops=None):
         import json
         user = info.context.user
         if user.is_anonymous:
             raise Exception("Authentication required")
             
-        rule = FareRule.objects.filter(vehicle_type=vehicle_type).first()
+        rule = FareRule.objects.filter(ride_type=ride_type).first()
         base_fare = rule.base_fare_tzs if rule else Decimal('1500.00')
         
         stops_data = None
@@ -129,7 +129,7 @@ class RequestRideMutation(graphene.Mutation):
             destination_address=destination_address,
             destination_lat=destination_lat,
             destination_lng=destination_lng,
-            vehicle_type=vehicle_type,
+            ride_type=ride_type,
             base_fare=base_fare,
             midway_stops=stops_data
         )

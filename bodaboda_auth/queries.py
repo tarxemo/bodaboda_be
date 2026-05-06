@@ -15,6 +15,7 @@ class Query(graphene.ObjectType):
         page=graphene.Int(default_value=1),
         page_size=graphene.Int(default_value=PAGE_SIZE),
     )
+    check_email = graphene.Boolean(email=graphene.String(required=True))
 
     def resolve_me(self, info):
         user = info.context.user
@@ -72,3 +73,6 @@ class Query(graphene.ObjectType):
         offset = (page - 1) * page_size
         rides = qs[offset: offset + page_size]
         return RideHistoryType(total=total, rides=list(rides))
+
+    def resolve_check_email(self, info, email):
+        return User.objects.filter(email=email).exists()
