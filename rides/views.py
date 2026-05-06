@@ -25,7 +25,7 @@ class RideEstimateView(APIView):
             data = serializer.validated_data
             dist_km = calculate_distance(float(data['pickup_lat']), float(data['pickup_lng']), float(data['destination_lat']), float(data['destination_lng']))
             
-            rule = FareRule.objects.filter(vehicle_type=data.get('vehicle_type', 'economy')).first()
+            rule = FareRule.objects.filter(ride_type=data.get('ride_type', 'ride')).first()
             if not rule:
                 base_fare = Decimal('1000')
                 per_km_rate = Decimal('500')
@@ -48,8 +48,8 @@ class RideRequestListCreateView(generics.ListCreateAPIView):
         return RideRequest.objects.filter(client=self.request.user).order_by('-requested_at')
 
     def perform_create(self, serializer):
-        vehicle_type = self.request.data.get('vehicle_type', 'economy')
-        rule = FareRule.objects.filter(vehicle_type=vehicle_type).first()
+        ride_type = self.request.data.get('ride_type', 'ride')
+        rule = FareRule.objects.filter(ride_type=ride_type).first()
         base_fare = rule.base_fare_tzs if rule else Decimal('1000.00')
         serializer.save(client=self.request.user, base_fare=base_fare)
 

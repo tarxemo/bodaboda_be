@@ -15,7 +15,7 @@ class RideEstimateSerializer(serializers.Serializer):
     pickup_lng = serializers.DecimalField(max_digits=10, decimal_places=7)
     destination_lat = serializers.DecimalField(max_digits=10, decimal_places=7)
     destination_lng = serializers.DecimalField(max_digits=10, decimal_places=7)
-    vehicle_type = serializers.ChoiceField(choices=RideRequest.VEHICLE_TYPE_CHOICES, default='economy')
+    ride_type = serializers.ChoiceField(choices=RideRequest.RIDE_TYPE_CHOICES, default='ride')
 
 class RideRatingSerializer(serializers.ModelSerializer):
     class Meta:
