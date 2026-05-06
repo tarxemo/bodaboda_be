@@ -63,6 +63,23 @@ class ClientStatsType(graphene.ObjectType):
     active_ride = graphene.Field(ActiveRideType)
 
 
+class EarningDataType(graphene.ObjectType):
+    day = graphene.String()
+    amount = graphene.Float()
+    trips = graphene.Int()
+    online_hours = graphene.Float()
+
+
+class RiderStatsType(graphene.ObjectType):
+    today_earnings = graphene.Float()
+    trips_completed = graphene.Int()
+    online_time = graphene.String()
+    rating = graphene.Float()
+    target_amount = graphene.Float()
+    target_completed_amount = graphene.Float()
+    weekly_earnings = graphene.List(EarningDataType)
+
+
 class RideHistoryType(graphene.ObjectType):
     total = graphene.Int()
     rides = graphene.List(RideType)

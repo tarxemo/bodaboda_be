@@ -113,13 +113,26 @@ class RequestRideMutation(graphene.Mutation):
             
         rule = FareRule.objects.filter(ride_type=ride_type).first()
         base_fare = rule.base_fare_tzs if rule else Decimal('1500.00')
+        per_km_rate = rule.per_km_rate_tzs if rule else Decimal('700.00')
         
         stops_data = None
+        points = [(pickup_lat, pickup_lng)]
         if midway_stops:
             try:
                 stops_data = json.loads(midway_stops)
+                for s in stops_data:
+                    points.append((s['lat'], s['lng']))
             except:
                 pass
+        
+        points.append((destination_lat, destination_lng))
+        
+        total_dist = 0
+        for i in range(len(points)-1):
+            total_dist += calculate_distance(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
+            
+        distance_fare = Decimal(str(total_dist)) * per_km_rate
+        total_fare = base_fare + distance_fare
 
         ride = RideRequest.objects.create(
             client=user,
@@ -131,6 +144,8 @@ class RequestRideMutation(graphene.Mutation):
             destination_lng=destination_lng,
             ride_type=ride_type,
             base_fare=base_fare,
+            distance_fare=distance_fare,
+            total_fare=total_fare,
             midway_stops=stops_data
         )
         return RequestRideMutation(ride=ride)
