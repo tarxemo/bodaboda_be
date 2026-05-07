@@ -71,22 +71,51 @@ class Query(graphene.ObjectType):
         return qs
 
     def resolve_my_active_request(self, info):
-        """Client polls this to see their latest pending/accepted/in_progress ride."""
+        from django.utils import timezone
+        from datetime import timedelta
         user = info.context.user
         if user.is_anonymous:
             raise Exception("Authentication required")
-        return RideRequest.objects.filter(
+        
+        ride = RideRequest.objects.filter(
             client=user,
-            status__in=['pending', 'accepted', 'in_progress']
+            status__in=['pending', 'accepted', 'confirmed', 'in_progress']
         ).order_by('-requested_at').first()
 
+        # Auto-cancel if accepted but not confirmed within 5 minutes
+        if ride and ride.status == 'accepted' and ride.accepted_at:
+            if timezone.now() > ride.accepted_at + timedelta(minutes=5):
+                ride.status = 'cancelled'
+                ride.cancelled_at = timezone.now()
+                ride.cancellation_reason = "Auto-cancelled due to timeout (client did not confirm within 5 mins)."
+                ride.save()
+                logger.info(f"Ride {ride.id} auto-cancelled due to client confirmation timeout.")
+                return None
+        
+        return ride
+
     def resolve_my_accepted_ride(self, info):
+        from django.utils import timezone
+        from datetime import timedelta
         user = info.context.user
         if user.is_anonymous:
             raise Exception("Authentication required")
-        return RideRequest.objects.filter(
-            rider=user, status__in=['accepted', 'in_progress']
+        
+        ride = RideRequest.objects.filter(
+            rider=user, status__in=['accepted', 'confirmed', 'in_progress']
         ).order_by('-accepted_at').first()
+
+        # Auto-cancel if accepted but not confirmed within 5 minutes
+        if ride and ride.status == 'accepted' and ride.accepted_at:
+            if timezone.now() > ride.accepted_at + timedelta(minutes=5):
+                ride.status = 'cancelled'
+                ride.cancelled_at = timezone.now()
+                ride.cancellation_reason = "Auto-cancelled due to timeout (client did not confirm within 5 mins)."
+                ride.save()
+                logger.info(f"Ride {ride.id} auto-cancelled from rider side check.")
+                return None
+        
+        return ride
 
 class EstimateRideMutation(graphene.Mutation):
     class Arguments:
@@ -254,7 +283,30 @@ class AcceptRideMutation(graphene.Mutation):
             logger.error(f"Error accepting ride {ride_id}: {str(e)}")
             return AcceptRideMutation(success=False, message="An error occurred while accepting the ride.", ride=None)
 
-        return AcceptRideMutation(success=True, message="Ride accepted.", ride=ride)
+        return AcceptRideMutation(success=True, message="Ride accepted. Waiting for client confirmation.", ride=ride)
+
+
+class ConfirmRideMutation(graphene.Mutation):
+    """CLIENT calls this to confirm the rider and their bike."""
+    class Arguments:
+        ride_id = graphene.Int(required=True)
+
+    ride = graphene.Field(RideRequestType)
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, ride_id):
+        user = info.context.user
+        if user.is_anonymous:
+            raise Exception("Authentication required")
+        
+        try:
+            ride = RideRequest.objects.get(pk=ride_id, client=user, status='accepted')
+            ride.status = 'confirmed'
+            ride.save()
+            return ConfirmRideMutation(success=True, message="Ride confirmed! Rider can now start the journey.", ride=ride)
+        except RideRequest.DoesNotExist:
+            return ConfirmRideMutation(success=False, message="Ride not found or already confirmed.", ride=None)
 
 
 class StartRideMutation(graphene.Mutation):
@@ -272,9 +324,9 @@ class StartRideMutation(graphene.Mutation):
             raise Exception("Authentication required")
 
         try:
-            ride = RideRequest.objects.get(pk=ride_id, rider=user, status='accepted')
+            ride = RideRequest.objects.get(pk=ride_id, rider=user, status='confirmed')
         except RideRequest.DoesNotExist:
-            return StartRideMutation(success=False, message="Ride not found or not in accepted state.", ride=None)
+            return StartRideMutation(success=False, message="Wait for client confirmation before starting.", ride=None)
 
         ride.status = 'in_progress'
         ride.started_at = timezone.now()
@@ -340,6 +392,7 @@ class Mutation(graphene.ObjectType):
     request_ride = RequestRideMutation.Field()
     rate_ride = RateRideMutation.Field()
     accept_ride = AcceptRideMutation.Field()
+    confirm_ride = ConfirmRideMutation.Field()
     start_ride = StartRideMutation.Field()
     complete_ride = CompleteRideMutation.Field()
     update_rider_location = UpdateRiderLocationMutation.Field()

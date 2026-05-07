@@ -8,7 +8,8 @@ class RideRequest(models.Model):
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
-        ('accepted', 'Accepted'),
+        ('accepted', 'Accepted (Rider)'),
+        ('confirmed', 'Confirmed (Client)'),
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
