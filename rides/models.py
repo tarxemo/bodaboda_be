@@ -69,6 +69,12 @@ class RideRequest(models.Model):
     actual_duration_minutes = models.IntegerField(null=True, blank=True)
     final_fare = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
+    # Rider live tracking (updated via mutation while ride is active)
+    rider_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    rider_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    rider_location_updated_at = models.DateTimeField(null=True, blank=True)
+
+
     class Meta:
         ordering = ['-requested_at']
         verbose_name = 'Ride Request'
