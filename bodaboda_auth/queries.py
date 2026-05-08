@@ -19,6 +19,10 @@ class Query(graphene.ObjectType):
         page_size=graphene.Int(default_value=PAGE_SIZE),
     )
     check_email = graphene.Boolean(email=graphene.String(required=True))
+    all_riders = graphene.List(UserType)
+
+    def resolve_all_riders(self, info):
+        return User.objects.filter(role='rider')
 
     def resolve_me(self, info):
         user = info.context.user
@@ -111,6 +115,15 @@ class Query(graphene.ObjectType):
         assigned_v = Vehicle.objects.filter(assigned_rider=user).first()
         plate = assigned_v.plate_number if assigned_v else "N/A"
             
+        # Active ride
+        active_ride = RideRequest.objects.filter(
+            rider=user, 
+            status__in=['accepted', 'confirmed', 'in_progress']
+        ).first()
+        
+        # Pending requests (all of them for now, sorting can be added later)
+        pending_requests = RideRequest.objects.filter(status='pending')
+            
         return RiderStatsType(
             today_earnings=float(today_earnings),
             trips_completed=trips_completed,
@@ -121,7 +134,9 @@ class Query(graphene.ObjectType):
             weekly_earnings=weekly_earnings,
             weekly_total=float(weekly_total),
             avg_earning_per_ride=float(avg_earning),
-            active_vehicle_plate=plate
+            active_vehicle_plate=plate,
+            active_ride=active_ride,
+            pending_requests=pending_requests
         )
 
     def resolve_ride_history(self, info, page=1, page_size=PAGE_SIZE):

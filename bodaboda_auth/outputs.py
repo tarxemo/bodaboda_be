@@ -1,6 +1,7 @@
 import graphene
 from graphene_django import DjangoObjectType
 from .models import CustomUser, Ride
+from rides.models import RideRequest
 
 
 class UserType(DjangoObjectType):
@@ -56,6 +57,15 @@ class RideType(DjangoObjectType):
         return f"{int(self.amount):,}"
 
 
+class RideRequestType(DjangoObjectType):
+    class Meta:
+        model = RideRequest
+        fields = (
+            "id", "pickup_address", "destination_address", "pickup_lat",
+            "pickup_lng", "destination_lat", "destination_lng", "status",
+            "total_fare", "client", "rider", "requested_at"
+        )
+
 class ActiveRideType(graphene.ObjectType):
     id = graphene.ID()
     pickup = graphene.String()
@@ -91,6 +101,8 @@ class RiderStatsType(graphene.ObjectType):
     weekly_total = graphene.Float()
     avg_earning_per_ride = graphene.Float()
     active_vehicle_plate = graphene.String()
+    active_ride = graphene.Field(RideRequestType)
+    pending_requests = graphene.List(RideRequestType)
 
 
 class RideHistoryType(graphene.ObjectType):

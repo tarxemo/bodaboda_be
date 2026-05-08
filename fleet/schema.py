@@ -59,11 +59,49 @@ class FuelLogType(DjangoObjectType):
         model = FuelLog
         fields = "__all__"
 
+class OwnerStatsType(graphene.ObjectType):
+    total_fleet_revenue = graphene.Float()
+    active_bikes = graphene.Int()
+    total_bikes = graphene.Int()
+    active_riders = graphene.Int()
+    avg_fleet_rating = graphene.Float()
+    alerts_count = graphene.Int()
+    revenue_data = graphene.List(graphene.Float)
+
 class Query(graphene.ObjectType):
     my_fleet = graphene.List(VehicleType)
     my_riders = graphene.List(UserType)
     my_vehicle = graphene.Field(VehicleType)
     my_fuel_logs = graphene.List(FuelLogType)
+    owner_stats = graphene.Field(OwnerStatsType)
+
+    def resolve_owner_stats(self, info):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'owner':
+            return None
+            
+        vehicles = Vehicle.objects.filter(owner=user)
+        total_bikes = vehicles.count()
+        active_bikes = vehicles.filter(status='active').count()
+        
+        assigned_riders = vehicles.exclude(assigned_rider__isnull=True).values_list('assigned_rider', flat=True)
+        active_riders = assigned_riders.count()
+        
+        # Simple revenue calculation for demo (sum of today's ride totals for all fleet riders)
+        from rides.models import RideRequest
+        today = timezone.now().date()
+        fleet_rides = RideRequest.objects.filter(rider_id__in=assigned_riders, status='completed', completed_at__date=today)
+        total_revenue = fleet_rides.aggregate(Sum('final_fare'))['final_fare__sum'] or 0.0
+        
+        return OwnerStatsType(
+            total_fleet_revenue=float(total_revenue),
+            active_bikes=active_bikes,
+            total_bikes=total_bikes,
+            active_riders=active_riders,
+            avg_fleet_rating=4.5, # Mock
+            alerts_count=vehicles.filter(status='maintenance').count(),
+            revenue_data=[45000, 52000, 48000, 61000, 55000, 72000, float(total_revenue)]
+        )
 
     def resolve_my_vehicle(self, info):
         user = info.context.user
@@ -126,12 +164,43 @@ class CreateVehicle(graphene.Mutation):
                 year=year,
                 plate_number=plate_number,
                 fuel_type=fuel_type,
-                status='active'
+                status='idle'
             )
             return CreateVehicle(success=True, message="Vehicle added successfully.", vehicle=vehicle)
         except Exception as e:
             return CreateVehicle(success=False, message=str(e))
 
 
+class AssignRider(graphene.Mutation):
+    class Arguments:
+        vehicle_id = graphene.Int(required=True)
+        rider_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, vehicle_id, rider_id):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'owner':
+            return AssignRider(success=False, message="Not authorized.")
+            
+        try:
+            vehicle = Vehicle.objects.get(pk=vehicle_id, owner=user)
+            from bodaboda_auth.models import CustomUser
+            rider = CustomUser.objects.get(pk=rider_id, role='rider')
+            
+            # Check if rider is already assigned to another bike
+            if Vehicle.objects.filter(assigned_rider=rider).exclude(pk=vehicle_id).exists():
+                return AssignRider(success=False, message="Rider is already assigned to another vehicle.")
+                
+            vehicle.assigned_rider = rider
+            vehicle.status = 'active'
+            vehicle.save()
+            return AssignRider(success=True, message=f"Rider {rider.full_name} assigned to {vehicle.plate_number}")
+        except Exception as e:
+            return AssignRider(success=False, message=str(e))
+
+
 class Mutation(graphene.ObjectType):
     create_vehicle = CreateVehicle.Field()
+    assign_rider = AssignRider.Field()
