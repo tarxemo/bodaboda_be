@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'tracking',
     'fleet',
     'payments',
+    'notifications',
     
     # Third Party Apps
     'graphene_django',
