@@ -11,6 +11,16 @@ class UserType(DjangoObjectType):
             "license_number", "plate_number", "company_name", "tax_id",
             "rating", "total_trips",
         )
+    
+    kyc_status = graphene.String()
+    
+    def resolve_kyc_status(self, info):
+        # Logic to determine KYC status based on uploaded files
+        if self.id_card_front and self.license_file:
+            return "verified"
+        if self.id_card_front or self.license_file:
+            return "pending"
+        return "not_started"
 
 
 class RideType(DjangoObjectType):
@@ -78,6 +88,9 @@ class RiderStatsType(graphene.ObjectType):
     target_amount = graphene.Float()
     target_completed_amount = graphene.Float()
     weekly_earnings = graphene.List(EarningDataType)
+    weekly_total = graphene.Float()
+    avg_earning_per_ride = graphene.Float()
+    active_vehicle_plate = graphene.String()
 
 
 class RideHistoryType(graphene.ObjectType):

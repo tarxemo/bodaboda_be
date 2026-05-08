@@ -101,15 +101,27 @@ class Query(graphene.ObjectType):
             
         target_amount = 30000.0
         target_completed_amount = min(float(today_earnings), target_amount)
+        
+        weekly_total = sum(d.amount for d in weekly_earnings)
+        avg_earning = 0.0
+        if trips_completed > 0:
+            avg_earning = float(sum(r.final_fare or r.total_fare or r.base_fare for r in rides)) / trips_completed
+            
+        from fleet.models import Vehicle
+        assigned_v = Vehicle.objects.filter(assigned_rider=user).first()
+        plate = assigned_v.plate_number if assigned_v else "N/A"
             
         return RiderStatsType(
             today_earnings=float(today_earnings),
             trips_completed=trips_completed,
-            online_time="8h 15m", # Mock online time
+            online_time="8h 15m", # Still mock as we don't have session tracking yet
             rating=float(user.rating),
             target_amount=target_amount,
             target_completed_amount=target_completed_amount,
-            weekly_earnings=weekly_earnings
+            weekly_earnings=weekly_earnings,
+            weekly_total=float(weekly_total),
+            avg_earning_per_ride=float(avg_earning),
+            active_vehicle_plate=plate
         )
 
     def resolve_ride_history(self, info, page=1, page_size=PAGE_SIZE):
@@ -117,11 +129,33 @@ class Query(graphene.ObjectType):
         if user.is_anonymous:
             return RideHistoryType(total=0, rides=[])
 
-        qs = Ride.objects.filter(client=user).select_related('rider')
+        from rides.models import RideRequest
+        if user.role == 'rider':
+            qs = RideRequest.objects.filter(rider=user)
+        else:
+            qs = RideRequest.objects.filter(client=user)
+            
         total = qs.count()
         offset = (page - 1) * page_size
-        rides = qs[offset: offset + page_size]
-        return RideHistoryType(total=total, rides=list(rides))
+        rides_db = qs.order_by('-requested_at')[offset: offset + page_size]
+        
+        # Map RideRequest fields to the output type
+        rides_output = []
+        for r in rides_db:
+            rides_output.append({
+                "id": r.id,
+                "pickup": r.pickup_address,
+                "destination": r.destination_address,
+                "date": r.requested_at,
+                "amount": float(r.final_fare or r.total_fare or 0),
+                "status": r.status,
+                "distance": float(r.actual_distance_km or r.estimated_distance_km or 0),
+                "duration": r.actual_duration_minutes or r.estimated_duration_minutes or 0,
+                "paymentMethod": "cash", # Default for now
+                "rider": r.rider
+            })
+            
+        return RideHistoryType(total=total, rides=rides_output)
 
     def resolve_check_email(self, info, email):
         return User.objects.filter(email=email).exists()

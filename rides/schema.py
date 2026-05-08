@@ -47,6 +47,8 @@ class Query(graphene.ObjectType):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("Authentication required")
+        if user.role == 'rider':
+            return RideRequest.objects.filter(rider=user).order_by('-requested_at')
         return RideRequest.objects.filter(client=user).order_by('-requested_at')
 
     def resolve_ride_detail(self, info, id):
