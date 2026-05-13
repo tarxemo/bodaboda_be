@@ -21,9 +21,16 @@ from graphene_django.views import GraphQLView
 from django.conf import settings
 from django.conf.urls.static import static
 
+from rest_framework.routers import DefaultRouter
+from fleet.views import FleetDocumentViewSet
+
+router = DefaultRouter()
+router.register(r'fleet-docs', FleetDocumentViewSet, basename='fleet-docs')
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
+    path('api/', include(router.urls)),
 ]
 
 if settings.DEBUG:

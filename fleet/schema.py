@@ -1,6 +1,6 @@
 import graphene
 from graphene_django import DjangoObjectType
-from .models import Vehicle, MaintenanceLog, FuelLog
+from .models import Vehicle, MaintenanceLog, FuelLog, RiderContract
 from bodaboda_auth.outputs import UserType
 from django.db.models import Sum
 from decimal import Decimal
@@ -59,6 +59,11 @@ class FuelLogType(DjangoObjectType):
         model = FuelLog
         fields = "__all__"
 
+class RiderContractType(DjangoObjectType):
+    class Meta:
+        model = RiderContract
+        fields = "__all__"
+
 class OwnerStatsType(graphene.ObjectType):
     total_fleet_revenue = graphene.Float()
     active_bikes = graphene.Int()
@@ -66,7 +71,8 @@ class OwnerStatsType(graphene.ObjectType):
     active_riders = graphene.Int()
     avg_fleet_rating = graphene.Float()
     alerts_count = graphene.Int()
-    revenue_data = graphene.List(graphene.Float)
+    weekly_revenue_data = graphene.List(graphene.Float)
+    daily_revenue_data = graphene.List(graphene.Float)
 
 class Query(graphene.ObjectType):
     my_fleet = graphene.List(VehicleType)
@@ -87,20 +93,55 @@ class Query(graphene.ObjectType):
         assigned_riders = vehicles.exclude(assigned_rider__isnull=True).values_list('assigned_rider', flat=True)
         active_riders = assigned_riders.count()
         
-        # Simple revenue calculation for demo (sum of today's ride totals for all fleet riders)
-        from rides.models import RideRequest
+        from rides.models import RideRequest, RideRating
+        from django.db.models import Avg, Sum
+        
+        # Today's Revenue
         today = timezone.now().date()
-        fleet_rides = RideRequest.objects.filter(rider_id__in=assigned_riders, status='completed', completed_at__date=today)
-        total_revenue = fleet_rides.aggregate(Sum('final_fare'))['final_fare__sum'] or 0.0
+        today_rides = RideRequest.objects.filter(rider_id__in=assigned_riders, status='completed', completed_at__date=today)
+        total_revenue = today_rides.aggregate(Sum('final_fare'))['final_fare__sum'] or 0.0
+        
+        # Weekly Average Rating
+        one_week_ago = timezone.now() - timedelta(days=7)
+        avg_rating = RideRating.objects.filter(
+            rated_user_id__in=assigned_riders, 
+            created_at__gte=one_week_ago
+        ).aggregate(Avg('stars'))['stars__avg'] or 0.0
+        
+        # Weekly Revenue Data (Last 7 days)
+        weekly_revenue = []
+        for i in range(6, -1, -1):
+            day = timezone.now().date() - timedelta(days=i)
+            day_rev = RideRequest.objects.filter(
+                rider_id__in=assigned_riders, 
+                status='completed', 
+                completed_at__date=day
+            ).aggregate(Sum('final_fare'))['final_fare__sum'] or 0.0
+            weekly_revenue.append(float(day_rev))
+            
+        # Daily Revenue Data (Last 24 hours, grouped by 3-hour blocks for better visualization)
+        daily_revenue = []
+        now = timezone.now()
+        for i in range(7, -1, -1):
+            start_time = now - timedelta(hours=(i+1)*3)
+            end_time = now - timedelta(hours=i*3)
+            period_rev = RideRequest.objects.filter(
+                rider_id__in=assigned_riders, 
+                status='completed', 
+                completed_at__gte=start_time,
+                completed_at__lt=end_time
+            ).aggregate(Sum('final_fare'))['final_fare__sum'] or 0.0
+            daily_revenue.append(float(period_rev))
         
         return OwnerStatsType(
             total_fleet_revenue=float(total_revenue),
             active_bikes=active_bikes,
             total_bikes=total_bikes,
             active_riders=active_riders,
-            avg_fleet_rating=4.5, # Mock
+            avg_fleet_rating=round(float(avg_rating), 1),
             alerts_count=vehicles.filter(status='maintenance').count(),
-            revenue_data=[45000, 52000, 48000, 61000, 55000, 72000, float(total_revenue)]
+            weekly_revenue_data=weekly_revenue,
+            daily_revenue_data=daily_revenue
         )
 
     def resolve_my_vehicle(self, info):
@@ -201,6 +242,83 @@ class AssignRider(graphene.Mutation):
             return AssignRider(success=False, message=str(e))
 
 
+class UpdateVehicleDetails(graphene.Mutation):
+    class Arguments:
+        vehicle_id = graphene.Int(required=True)
+        tin_number = graphene.String()
+        engine_number = graphene.String()
+        engine_capacity_cc = graphene.Int()
+        is_tbs_inspected = graphene.Boolean()
+        transport_group_details = graphene.String()
+        chassis_number = graphene.String()
+        insurance_policy_number = graphene.String()
+        insurance_expiry = graphene.Date()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    vehicle = graphene.Field(VehicleType)
+
+    def mutate(self, info, vehicle_id, **kwargs):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'owner':
+            return UpdateVehicleDetails(success=False, message="Not authorized.")
+        
+        try:
+            vehicle = Vehicle.objects.get(pk=vehicle_id, owner=user)
+            for key, value in kwargs.items():
+                setattr(vehicle, key, value)
+            vehicle.save()
+            return UpdateVehicleDetails(success=True, message="Vehicle details updated successfully.", vehicle=vehicle)
+        except Exception as e:
+            return UpdateVehicleDetails(success=False, message=str(e))
+
+class CreateRiderContract(graphene.Mutation):
+    class Arguments:
+        vehicle_id = graphene.Int(required=True)
+        rider_id = graphene.Int(required=True)
+        expiration_date = graphene.Date(required=True)
+        start_date = graphene.Date(required=True)
+        # File uploads are tricky in pure graphene without specific middleware, 
+        # but for now we'll define the mutation and assume the client handles the file separately if needed or we use a custom scalar.
+        # However, for this task, I'll focus on the logic.
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    contract = graphene.Field(RiderContractType)
+
+    def mutate(self, info, vehicle_id, rider_id, expiration_date, start_date):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'owner':
+            return CreateRiderContract(success=False, message="Not authorized.")
+        
+        try:
+            vehicle = Vehicle.objects.get(pk=vehicle_id, owner=user)
+            from bodaboda_auth.models import CustomUser
+            rider = CustomUser.objects.get(pk=rider_id, role='rider')
+            
+            # Deactivate old contracts for this vehicle
+            RiderContract.objects.filter(vehicle=vehicle, is_active=True).update(is_active=False)
+            
+            contract = RiderContract.objects.create(
+                vehicle=vehicle,
+                owner=user,
+                rider=rider,
+                start_date=start_date,
+                expiration_date=expiration_date,
+                is_active=True
+            )
+            
+            # Update vehicle assignment
+            vehicle.assigned_rider = rider
+            vehicle.status = 'active'
+            vehicle.save()
+            
+            return CreateRiderContract(success=True, message="Contract created and rider assigned.", contract=contract)
+        except Exception as e:
+            return CreateRiderContract(success=False, message=str(e))
+
 class Mutation(graphene.ObjectType):
     create_vehicle = CreateVehicle.Field()
     assign_rider = AssignRider.Field()
+    update_vehicle_details = UpdateVehicleDetails.Field()
+    create_rider_contract = CreateRiderContract.Field()
