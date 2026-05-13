@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  backend:
+    image: ${DOCKER_USERNAME}/bodaboda-be:latest
+    container_name: bodaboda-be
+    ports:
+      - "8005:8000"
+    environment:
+      - DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=*
+    restart: unless-stopped
