@@ -253,6 +253,9 @@ class UpdateVehicleDetails(graphene.Mutation):
         chassis_number = graphene.String()
         insurance_policy_number = graphene.String()
         insurance_expiry = graphene.Date()
+        logbook_control_number = graphene.String()
+        insurance_sticker_number = graphene.String()
+        latra_license_number = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()

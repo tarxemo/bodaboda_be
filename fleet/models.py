@@ -69,6 +69,11 @@ class Vehicle(models.Model):
     commercial_registration_doc = models.FileField(upload_to='fleet/commercial/', null=True, blank=True)
     transport_group_details = models.TextField(blank=True, null=True)
     local_authority_permits = models.FileField(upload_to='fleet/permits/', null=True, blank=True)
+    
+    # New Compliance Fields
+    logbook_control_number = models.CharField(max_length=50, blank=True, null=True)
+    insurance_sticker_number = models.CharField(max_length=50, blank=True, null=True)
+    latra_license_number = models.CharField(max_length=100, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
