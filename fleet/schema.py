@@ -169,9 +169,10 @@ class Query(graphene.ObjectType):
         user = info.context.user
         if user.is_authenticated and user.role == 'owner':
             from bodaboda_auth.models import CustomUser
-            # Find all riders assigned to the owner's vehicles
+            from django.db.models import Q
+            # Find all riders assigned to the owner's vehicles OR registered by this owner
             assigned_rider_ids = Vehicle.objects.filter(owner=user).exclude(assigned_rider__isnull=True).values_list('assigned_rider_id', flat=True)
-            return CustomUser.objects.filter(id__in=assigned_rider_ids)
+            return CustomUser.objects.filter(Q(id__in=assigned_rider_ids) | Q(registered_by=user)).distinct()
         return []
 
 

@@ -5,6 +5,10 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Vehicle, RiderContract
 from .serializers import VehicleDocumentSerializer, RiderContractSerializer
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+@method_decorator(csrf_exempt, name='dispatch')
 class FleetDocumentViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]

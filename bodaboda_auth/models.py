@@ -13,6 +13,10 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client')
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, unique=True)
+    registered_by = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, 
+        related_name='registered_users'
+    )
 
     # Rider Specific
     license_number = models.CharField(max_length=100, blank=True, null=True)
@@ -23,14 +27,23 @@ class CustomUser(AbstractUser):
     tax_id = models.CharField(max_length=100, blank=True, null=True)
 
     # KYC Files
+    nida_number = models.CharField(max_length=20, blank=True, null=True)
     id_card_front = models.FileField(upload_to='kyc/id_cards/', blank=True, null=True)
     id_card_back = models.FileField(upload_to='kyc/id_cards/', blank=True, null=True)
     license_file = models.FileField(upload_to='kyc/licenses/', blank=True, null=True)
+    local_authority_letter = models.FileField(upload_to='kyc/authority_letters/', blank=True, null=True)
     business_docs = models.FileField(upload_to='kyc/business/', blank=True, null=True)
+
+    # Guarantor Info
+    guarantor_name = models.CharField(max_length=255, blank=True, null=True)
+    guarantor_phone = models.CharField(max_length=20, blank=True, null=True)
+    guarantor_id_front = models.FileField(upload_to='kyc/guarantor/', blank=True, null=True)
+    guarantor_id_back = models.FileField(upload_to='kyc/guarantor/', blank=True, null=True)
 
     # Rider stats (updated on ride completion)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=5.00)
     total_trips = models.PositiveIntegerField(default=0)
+    is_suspended = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.username} ({self.role})"
@@ -85,7 +98,7 @@ class Ride(models.Model):
 class PasswordResetToken(models.Model):
     """Custom model to store password reset tokens without third-party dependencies."""
     user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name='password_reset_tokens'
+        CustomUser, on_delete=models.CASCADE, related_name='custom_password_reset_tokens'
     )
     key = models.CharField(max_length=64, unique=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

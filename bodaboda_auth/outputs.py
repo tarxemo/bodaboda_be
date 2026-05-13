@@ -10,18 +10,36 @@ class UserType(DjangoObjectType):
         fields = (
             "id", "username", "email", "full_name", "phone", "role",
             "license_number", "plate_number", "company_name", "tax_id",
-            "rating", "total_trips",
+            "rating", "total_trips", "nida_number", "guarantor_name", "guarantor_phone",
+            "is_suspended", "id_card_front", "id_card_back", "license_file", 
+            "local_authority_letter", "guarantor_id_front", "guarantor_id_back"
         )
     
     kyc_status = graphene.String()
+    is_fully_registered = graphene.Boolean()
     
     def resolve_kyc_status(self, info):
         # Logic to determine KYC status based on uploaded files
-        if self.id_card_front and self.license_file:
+        required_files = [
+            self.id_card_front, self.id_card_back, self.license_file, 
+            self.local_authority_letter, self.guarantor_id_front
+        ]
+        uploaded_count = sum(1 for f in required_files if f)
+        
+        if uploaded_count == len(required_files):
             return "verified"
-        if self.id_card_front or self.license_file:
+        if uploaded_count > 0:
             return "pending"
         return "not_started"
+
+    def resolve_is_fully_registered(self, info):
+        required_fields = [
+            self.id_card_front, self.id_card_back, self.license_file,
+            self.nida_number, self.local_authority_letter,
+            self.guarantor_name, self.guarantor_phone,
+            self.guarantor_id_front, self.guarantor_id_back
+        ]
+        return all(required_fields)
 
 
 class RideType(DjangoObjectType):

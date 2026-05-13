@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'graphene_django',
     'corsheaders',
     'rest_framework',
+    'django_rest_passwordreset',
 ]
 
 REST_FRAMEWORK = {

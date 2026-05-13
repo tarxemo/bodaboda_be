@@ -274,10 +274,82 @@ class ConfirmPasswordReset(graphene.Mutation):
         return ConfirmPasswordReset(success=True, message="Password reset successfully. You can now login.")
 
 
+class RegisterRider(graphene.Mutation):
+    class Arguments:
+        full_name = graphene.String(required=True)
+        phone = graphene.String(required=True)
+        email = graphene.String()
+        password = graphene.String(required=True)
+        license_number = graphene.String()
+        nida_number = graphene.String()
+        guarantor_name = graphene.String()
+        guarantor_phone = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    user = graphene.Field(UserType)
+
+    def mutate(self, info, **kwargs):
+        owner = info.context.user
+        if not owner.is_authenticated or owner.role != 'owner':
+            return RegisterRider(success=False, message="Only owners can register riders.")
+
+        phone = kwargs.get('phone')
+        if User.objects.filter(phone=phone).exists():
+            return RegisterRider(success=False, message="Phone number already registered.")
+
+        full_name = kwargs.get('full_name')
+        email = kwargs.get('email', f"{phone}@bodakitaa.com")
+        password = kwargs.get('password')
+
+        user = User.objects.create_user(
+            username=phone,
+            email=email,
+            password=password,
+            full_name=full_name,
+            phone=phone,
+            role='rider',
+            registered_by=owner,
+            license_number=kwargs.get('license_number'),
+            nida_number=kwargs.get('nida_number'),
+            guarantor_name=kwargs.get('guarantor_name'),
+            guarantor_phone=kwargs.get('guarantor_phone')
+        )
+        return RegisterRider(success=True, message="Rider registered successfully.", user=user)
+
+
+class ToggleRiderSuspension(graphene.Mutation):
+    class Arguments:
+        rider_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    is_suspended = graphene.Boolean()
+
+    def mutate(self, info, rider_id):
+        owner = info.context.user
+        if not owner.is_authenticated or owner.role != 'owner':
+            return ToggleRiderSuspension(success=False, message="Not authorized.")
+        
+        try:
+            rider = User.objects.get(pk=rider_id, registered_by=owner)
+            rider.is_suspended = not rider.is_suspended
+            rider.save()
+            status_text = "suspended" if rider.is_suspended else "reinstated"
+            return ToggleRiderSuspension(
+                success=True, 
+                message=f"Rider {rider.full_name} has been {status_text}.",
+                is_suspended=rider.is_suspended
+            )
+        except User.DoesNotExist:
+            return ToggleRiderSuspension(success=False, message="Rider not found or not registered by you.")
+
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     register = Register.Field()
+    register_rider = RegisterRider.Field()
+    toggle_rider_suspension = ToggleRiderSuspension.Field()
     request_password_reset = RequestPasswordReset.Field()
     confirm_password_reset = ConfirmPasswordReset.Field()
