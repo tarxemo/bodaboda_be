@@ -94,6 +94,7 @@ class RiderContract(models.Model):
     contract_doc = models.FileField(upload_to='fleet/contracts/')
     start_date = models.DateField()
     expiration_date = models.DateField()
+    daily_rent_tzs = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('25000.00'))
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

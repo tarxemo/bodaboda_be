@@ -359,10 +359,40 @@ class CompleteRideMutation(graphene.Mutation):
         ride.completed_at = timezone.now()
         ride.final_fare = ride.total_fare
         ride.save()
+        
         # Update rider's total trips
         user.total_trips = (user.total_trips or 0) + 1
         user.save(update_fields=['total_trips'])
-        return CompleteRideMutation(success=True, message="Ride completed.", ride=ride)
+
+        # --- Automatic Income Recording for Owner ---
+        try:
+            from payments.models import Wallet, Transaction
+            from decimal import Decimal
+            
+            # Use 15% commission as default if no rule found
+            commission_rate = Decimal('0.15') 
+            income_amount = Decimal(str(ride.final_fare)) * commission_rate
+            
+            # Find the owner who registered this rider
+            owner = getattr(user, 'registered_by', None)
+            if owner:
+                wallet, _ = Wallet.objects.get_or_create(user=owner)
+                wallet.balance_tzs += income_amount
+                wallet.save()
+                
+                Transaction.objects.create(
+                    wallet=wallet,
+                    ride=ride,
+                    transaction_type='ride_earning',
+                    amount_tzs=income_amount,
+                    balance_after_tzs=wallet.balance_tzs,
+                    status='success',
+                    description=f"Commission from Ride #{ride.id} completed by {user.full_name}"
+                )
+        except Exception as e:
+            print(f"Failed to record automatic income: {e}")
+
+        return CompleteRideMutation(success=True, message="Ride completed. Income recorded.", ride=ride)
 
 
 class UpdateRiderLocationMutation(graphene.Mutation):
