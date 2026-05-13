@@ -1,6 +1,6 @@
 import graphene
 from django.utils import timezone
-from .models import Wallet, DailySubmission, Transaction
+from .models import Wallet, DailySubmission, Transaction, FleetExpense
 from .inputs import DailySubmissionInput, ApproveSubmissionInput, ExpenseInput
 from .outputs import DailySubmissionType, FleetExpenseType
 from fleet.models import RiderContract
