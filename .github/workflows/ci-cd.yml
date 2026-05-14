@@ -1,4 +1,4 @@
-name: Bodaboda Backend CI/CD
+name: Bodaboda Backend CI/CD Pipeline
 
 on:
   push:
@@ -7,8 +7,9 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  test:
-    name: Run Unit Tests (CI)
+  # TASK 2: CONTINUOUS INTEGRATION (CI)
+  ci-testing:
+    name: "Task 2: Continuous Integration"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -24,15 +25,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run Unit Tests
         run: |
-          python manage.py test tests/
+          # Pipeline will fail here if tests fail (Assignment Requirement)
+          python app/manage.py test tests/
 
-  build-and-push:
-    name: Build & Push Docker Image
-    needs: test
+  # TASK 3: CONTINUOUS DEPLOYMENT (CD) - Part 1: Staging
+  build-and-deploy-staging:
+    name: "Task 3.1: Staging Deployment"
+    needs: ci-testing
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    environment: staging
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,7 +50,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build and push (With Version Tags - Task 4)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -57,12 +61,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-staging:
-    name: Deploy to Staging
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
       - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -73,16 +71,17 @@ jobs:
             mkdir -p ~/bodaboda/staging
             cd ~/bodaboda/staging
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
-            # For simulation, we use a different compose or container name
             docker compose -f ../docker-compose.backend.yml pull backend
             docker compose -f ../docker-compose.backend.yml up -d --remove-orphans backend
+            echo "STAGING DEPLOYMENT SUCCESSFUL"
             docker ps | grep bodaboda-be
 
+  # TASK 3: CONTINUOUS DEPLOYMENT (CD) - Part 2: Approval & Production
   deploy-production:
-    name: Deploy to Production
-    needs: deploy-staging
+    name: "Task 3.2: Production Deployment"
+    needs: build-and-deploy-staging
     runs-on: ubuntu-latest
-    environment: production # Requires manual approval in GitHub settings
+    environment: production # Approval Gate (Task 3.2)
     steps:
       - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
@@ -95,4 +94,17 @@ jobs:
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             docker compose -f docker-compose.backend.yml pull backend
             docker compose -f docker-compose.backend.yml up -d backend
-            docker image prune -f
+            echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
+            
+      # TASK 4: DOCKER MANAGEMENT & MONITORING
+      - name: Collect Monitoring Logs
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "--- APPLICATION LOGS (TASK 4) ---"
+            docker logs --tail 20 bodaboda-be
+            echo "--- CONTAINER STATUS ---"
+            docker stats bodaboda-be --no-stream
