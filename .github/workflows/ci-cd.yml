@@ -146,3 +146,4 @@ jobs:
             docker logs --tail 20 bodaboda-be
             echo "--- CONTAINER RESOURCE USAGE ---"
             docker stats bodaboda-be --no-stream
+
