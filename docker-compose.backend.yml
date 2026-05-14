@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bodaboda-db
+    environment:
+      POSTGRES_DB: bodaboda_db
+      POSTGRES_USER: tarxemo
+      POSTGRES_PASSWORD: "@SuperCoder"
+    volumes:
+      - bodaboda_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - bodaboda-network
+
+  backend:
+    image: ${DOCKER_USERNAME}/bodaboda-be:latest
+    container_name: bodaboda-be
+    depends_on:
+      - db
+    ports:
+      - "8005:8000"
+    environment:
+      - DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=*
+      - DB_NAME=bodaboda_db
+      - DB_USER=tarxemo
+      - DB_PASSWORD=@SuperCoder
+      - DB_HOST=db
+      - DB_PORT=5432
+      - SECRET_KEY=django-insecure-prod-key-for-assignment
+    restart: unless-stopped
+    networks:
+      - bodaboda-network
+
+networks:
+  bodaboda-network:
+    driver: bridge
+
+volumes:
+  bodaboda_db_data:

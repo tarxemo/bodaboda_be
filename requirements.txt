@@ -7,3 +7,5 @@ graphene-django
 django-graphql-jwt
 django-rest-passwordreset
 python-dotenv
+Pillow
+

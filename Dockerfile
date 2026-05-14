@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy only the app code into the workdir
+COPY app/ .
 
 RUN python manage.py collectstatic --noinput || true
 
