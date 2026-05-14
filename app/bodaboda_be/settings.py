@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-ci-test-key-replace-in-pro
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['bodabodabackend.tarxemo.com', 'localhost', '127.0.0.1', '*']
 
 
 # Application definition
@@ -93,7 +93,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://bodaboda.tarxemo.com",
+    "http://localhost:5173",
+    "http://localhost:8081",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://bodaboda.tarxemo.com",
+    "https://bodabodabackend.tarxemo.com",
+]
 
 ROOT_URLCONF = 'bodaboda_be.urls'
 
