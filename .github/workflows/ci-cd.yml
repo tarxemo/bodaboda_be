@@ -75,8 +75,9 @@ jobs:
             docker stop bodakitaa-fe-be-1 2>/dev/null || true
             docker rm bodakitaa-fe-be-1 2>/dev/null || true
             # Deploy new container
-            docker compose -f ../docker-compose.backend.yml pull backend
-            docker compose -f ../docker-compose.backend.yml up -d --remove-orphans
+            docker compose -p bodaboda-be -f ../docker-compose.backend.yml pull backend
+            docker compose -p bodaboda-be -f ../docker-compose.backend.yml up -d --remove-orphans
+
             # Run migrations
             docker exec bodaboda-be python manage.py migrate --noinput
             echo "STAGING DEPLOYMENT SUCCESSFUL"
@@ -103,10 +104,11 @@ jobs:
             docker stop bodakitaa-fe-be-1 2>/dev/null || true
             docker rm bodakitaa-fe-be-1 2>/dev/null || true
             # Deploy new container
-            docker compose -f docker-compose.backend.yml pull backend
-            docker compose -f docker-compose.backend.yml up -d
-            # Run migrations
+            docker compose -p bodaboda-be -f docker-compose.backend.yml pull backend
+            docker compose -p bodaboda-be -f docker-compose.backend.yml up -d
+            # Run migrations (using specific container name)
             docker exec bodaboda-be python manage.py migrate --noinput
+
             docker image prune -f
             echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
             
