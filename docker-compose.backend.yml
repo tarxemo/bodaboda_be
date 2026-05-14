@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: bodaboda_db
       POSTGRES_USER: tarxemo
-      POSTGRES_PASSWORD: "@SuperBodaPassword"
+      POSTGRES_PASSWORD: "@SuperCoder"
     volumes:
       - bodaboda_db_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -26,7 +26,7 @@ services:
       - DJANGO_ALLOWED_HOSTS=*
       - DB_NAME=bodaboda_db
       - DB_USER=tarxemo
-      - DB_PASSWORD=@SuperBodaPassword
+      - DB_PASSWORD=@SuperCoder
       - DB_HOST=db
       - DB_PORT=5432
       - SECRET_KEY=django-insecure-prod-key-for-assignment
