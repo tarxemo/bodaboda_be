@@ -71,6 +71,10 @@ jobs:
             mkdir -p ~/bodaboda/staging
             cd ~/bodaboda/staging
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            # Stop legacy containers to free up port 8005
+            docker stop bodakitaa-fe-be-1 2>/dev/null || true
+            docker rm bodakitaa-fe-be-1 2>/dev/null || true
+            # Deploy new container
             docker compose -f ../docker-compose.backend.yml pull backend
             docker compose -f ../docker-compose.backend.yml up -d --remove-orphans backend
             echo "STAGING DEPLOYMENT SUCCESSFUL"
@@ -92,8 +96,13 @@ jobs:
           script: |
             cd ~/bodaboda
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            # Ensure legacy containers are gone
+            docker stop bodakitaa-fe-be-1 2>/dev/null || true
+            docker rm bodakitaa-fe-be-1 2>/dev/null || true
+            # Deploy new container
             docker compose -f docker-compose.backend.yml pull backend
             docker compose -f docker-compose.backend.yml up -d backend
+            docker image prune -f
             echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
             
       # TASK 4: DOCKER MANAGEMENT & MONITORING
