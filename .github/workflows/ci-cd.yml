@@ -76,9 +76,12 @@ jobs:
             docker rm bodakitaa-fe-be-1 2>/dev/null || true
             # Deploy new container
             docker compose -f ../docker-compose.backend.yml pull backend
-            docker compose -f ../docker-compose.backend.yml up -d --remove-orphans backend
+            docker compose -f ../docker-compose.backend.yml up -d --remove-orphans
+            # Run migrations
+            docker exec bodaboda-be python manage.py migrate --noinput
             echo "STAGING DEPLOYMENT SUCCESSFUL"
-            docker ps | grep bodaboda-be
+            docker ps | grep bodaboda
+
 
   # TASK 3: CONTINUOUS DEPLOYMENT (CD) - Part 2: Approval & Production
   deploy-production:
@@ -101,7 +104,9 @@ jobs:
             docker rm bodakitaa-fe-be-1 2>/dev/null || true
             # Deploy new container
             docker compose -f docker-compose.backend.yml pull backend
-            docker compose -f docker-compose.backend.yml up -d backend
+            docker compose -f docker-compose.backend.yml up -d
+            # Run migrations
+            docker exec bodaboda-be python manage.py migrate --noinput
             docker image prune -f
             echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
             
