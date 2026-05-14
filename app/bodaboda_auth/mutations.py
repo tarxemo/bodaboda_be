@@ -1,5 +1,6 @@
 import graphene
 import graphql_jwt
+from graphql_jwt.shortcuts import get_token
 import secrets
 import string
 from django.contrib.auth import get_user_model
@@ -212,7 +213,7 @@ class Register(graphene.Mutation):
             tax_id=input.tax_id if input.tax_id else None,
         )
 
-        token = graphql_jwt.shortcuts.get_token(user)
+        token = get_token(user)
         return Register(success=True, message="Registration successful", user=user, token=token)
 
 
