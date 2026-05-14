@@ -56,6 +56,25 @@ class Vehicle(models.Model):
     logbook = models.FileField(upload_to='fleet/logbooks/', null=True, blank=True)
     insurance_doc = models.FileField(upload_to='fleet/insurance/', null=True, blank=True)
 
+    # Legal & Tax
+    tin_number = models.CharField(max_length=50, blank=True, null=True)
+    ownership_transfer_doc = models.FileField(upload_to='fleet/ownership/', null=True, blank=True)
+    
+    # Technical
+    engine_number = models.CharField(max_length=100, blank=True, null=True)
+    engine_capacity_cc = models.PositiveIntegerField(default=150)
+    
+    # Compliance
+    is_tbs_inspected = models.BooleanField(default=False)
+    commercial_registration_doc = models.FileField(upload_to='fleet/commercial/', null=True, blank=True)
+    transport_group_details = models.TextField(blank=True, null=True)
+    local_authority_permits = models.FileField(upload_to='fleet/permits/', null=True, blank=True)
+    
+    # New Compliance Fields
+    logbook_control_number = models.CharField(max_length=50, blank=True, null=True)
+    insurance_sticker_number = models.CharField(max_length=50, blank=True, null=True)
+    latra_license_number = models.CharField(max_length=100, blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -65,6 +84,22 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.make} {self.model_name} [{self.plate_number}] — {self.get_status_display()}"
+
+
+class RiderContract(models.Model):
+    """Records the contract between an owner and a rider for a specific vehicle."""
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='contracts')
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='owner_contracts')
+    rider = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rider_contracts')
+    contract_doc = models.FileField(upload_to='fleet/contracts/')
+    start_date = models.DateField()
+    expiration_date = models.DateField()
+    daily_rent_tzs = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('25000.00'))
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Contract: {self.owner} -> {self.rider} for {self.vehicle}"
 
 
 class MaintenanceLog(models.Model):

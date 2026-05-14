@@ -10,13 +10,79 @@ class Wallet(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet'
     )
     balance_tzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
+    total_debt_tzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), help_text="Total amount rider owes the owner")
     is_frozen = models.BooleanField(default=False, help_text="Freeze wallet on suspicious activity")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Wallet of {self.user} — TZS {self.balance_tzs}"
+        return f"Wallet of {self.user} — TZS {self.balance_tzs} (Debt: {self.total_debt_tzs})"
 
+
+class DailySubmission(models.Model):
+    """Manual submission record by rider for their daily fee."""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    rider = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_submissions'
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_submissions'
+    )
+    amount_tzs = models.DecimalField(max_digits=12, decimal_places=2)
+    expected_amount_tzs = models.DecimalField(max_digits=12, decimal_places=2)
+    submission_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reference_number = models.CharField(max_length=100, blank=True, null=True, help_text="Mobile money transaction ID or receipt number")
+    comment = models.TextField(blank=True, null=True)
+    
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submission_date', '-created_at']
+        unique_together = ('rider', 'submission_date')
+
+    def __str__(self):
+        return f"Submission: {self.rider} for {self.submission_date} — {self.status}"
+
+
+
+class FleetExpense(models.Model):
+    """Manual expense recorded by owner (fuel, maintenance, etc.)"""
+
+    CATEGORY_CHOICES = [
+        ('fuel', 'Fuel'),
+        ('maintenance', 'Maintenance'),
+        ('repair', 'Repair'),
+        ('fine', 'Traffic Fine'),
+        ('permit', 'Permit/License'),
+        ('other', 'Other'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='recorded_expenses'
+    )
+    vehicle = models.ForeignKey(
+        'fleet.Vehicle', on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses'
+    )
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    amount_tzs = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField()
+    expense_date = models.DateField()
+    receipt = models.ImageField(upload_to='fleet/expenses/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-expense_date', '-created_at']
+
+    def __str__(self):
+        return f"Expense: {self.category} — TZS {self.amount_tzs}"
 
 class Transaction(models.Model):
     """Every financial movement (credit/debit) on a wallet."""

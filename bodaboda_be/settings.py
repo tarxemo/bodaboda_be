@@ -54,7 +54,19 @@ INSTALLED_APPS = [
     # Third Party Apps
     'graphene_django',
     'corsheaders',
+    'rest_framework',
+    'django_rest_passwordreset',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'bodaboda_auth.authentication.GraphQLJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
 AUTH_USER_MODEL = 'bodaboda_auth.CustomUser'
 
