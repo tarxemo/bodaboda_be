@@ -146,14 +146,14 @@ class Query(graphene.ObjectType):
 
     def resolve_my_vehicle(self, info):
         user = info.context.user
-        if user.is_authenticated and user.role == 'rider':
+        if user.is_authenticated and user.role in ['rider', 'employed_rider']:
             return Vehicle.objects.filter(assigned_rider=user).first()
         return None
 
     def resolve_my_fuel_logs(self, info):
         user = info.context.user
         if user.is_authenticated:
-            if user.role == 'rider':
+            if user.role in ['rider', 'employed_rider']:
                 return FuelLog.objects.filter(rider=user)
             elif user.role == 'owner':
                 return FuelLog.objects.filter(vehicle__owner=user)
@@ -229,7 +229,7 @@ class AssignRider(graphene.Mutation):
         try:
             vehicle = Vehicle.objects.get(pk=vehicle_id, owner=user)
             from bodaboda_auth.models import CustomUser
-            rider = CustomUser.objects.get(pk=rider_id, role='rider')
+            rider = CustomUser.objects.get(pk=rider_id, role__in=['rider', 'employed_rider'])
             
             # Check if rider is already assigned to another bike
             if Vehicle.objects.filter(assigned_rider=rider).exclude(pk=vehicle_id).exists():
@@ -298,7 +298,7 @@ class CreateRiderContract(graphene.Mutation):
         try:
             vehicle = Vehicle.objects.get(pk=vehicle_id, owner=user)
             from bodaboda_auth.models import CustomUser
-            rider = CustomUser.objects.get(pk=rider_id, role='rider')
+            rider = CustomUser.objects.get(pk=rider_id, role__in=['rider', 'employed_rider'])
             
             # Deactivate old contracts for this vehicle
             RiderContract.objects.filter(vehicle=vehicle, is_active=True).update(is_active=False)

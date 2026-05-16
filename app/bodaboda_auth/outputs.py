@@ -12,7 +12,8 @@ class UserType(DjangoObjectType):
             "license_number", "plate_number", "company_name", "tax_id",
             "rating", "total_trips", "nida_number", "guarantor_name", "guarantor_phone",
             "is_suspended", "id_card_front", "id_card_back", "license_file", 
-            "local_authority_letter", "guarantor_id_front", "guarantor_id_back"
+            "local_authority_letter", "guarantor_id_front", "guarantor_id_back",
+            "daily_target_tzs", "registered_by"
         )
     
     kyc_status = graphene.String()
@@ -132,3 +133,24 @@ class AuthResponse(graphene.ObjectType):
     success = graphene.Boolean()
     message = graphene.String()
     user = graphene.Field(UserType)
+
+
+class BossReportType(graphene.ObjectType):
+    """Data for the employed rider's Boss Report page."""
+    boss_name = graphene.String()
+    boss_phone = graphene.String()
+    boss_company = graphene.String()
+    daily_target_tzs = graphene.Float()
+    today_gross_earnings = graphene.Float()
+    today_submitted_tzs = graphene.Float()
+    today_remaining_to_pay = graphene.Float()
+    today_net_profit = graphene.Float()
+    weekly_submitted = graphene.Float()
+    consistency_percent = graphene.Int()
+    submission_history = graphene.List('bodaboda_auth.outputs.SubmissionSummaryType')
+
+
+class SubmissionSummaryType(graphene.ObjectType):
+    date = graphene.String()
+    amount_tzs = graphene.Float()
+    status = graphene.String()

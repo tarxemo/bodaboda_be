@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from .models import Ride
-from .outputs import UserType, ClientStatsType, RideHistoryType, ActiveRideType, RiderStatsType, EarningDataType
+from .outputs import UserType, ClientStatsType, RideHistoryType, ActiveRideType, RiderStatsType, EarningDataType, BossReportType, SubmissionSummaryType
 
 User = get_user_model()
 PAGE_SIZE = 10
@@ -13,6 +13,7 @@ class Query(graphene.ObjectType):
     me = graphene.Field(UserType)
     client_stats = graphene.Field(ClientStatsType)
     rider_stats = graphene.Field(RiderStatsType)
+    boss_report = graphene.Field(BossReportType)
     ride_history = graphene.Field(
         RideHistoryType,
         page=graphene.Int(default_value=1),
@@ -22,7 +23,7 @@ class Query(graphene.ObjectType):
     all_riders = graphene.List(UserType)
 
     def resolve_all_riders(self, info):
-        return User.objects.filter(role='rider')
+        return User.objects.filter(role__in=['rider', 'employed_rider'])
 
     def resolve_me(self, info):
         user = info.context.user
@@ -72,7 +73,7 @@ class Query(graphene.ObjectType):
 
     def resolve_rider_stats(self, info):
         user = info.context.user
-        if user.is_anonymous or user.role != 'rider':
+        if user.is_anonymous or user.role not in ('rider', 'employed_rider'):
             return None
             
         now = timezone.now()
@@ -145,7 +146,7 @@ class Query(graphene.ObjectType):
             return RideHistoryType(total=0, rides=[])
 
         from rides.models import RideRequest
-        if user.role == 'rider':
+        if user.role in ('rider', 'employed_rider'):
             qs = RideRequest.objects.filter(rider=user)
         else:
             qs = RideRequest.objects.filter(client=user)
@@ -174,3 +175,78 @@ class Query(graphene.ObjectType):
 
     def resolve_check_email(self, info, email):
         return User.objects.filter(email=email).exists()
+
+    def resolve_boss_report(self, info):
+        user = info.context.user
+        if user.is_anonymous or user.role != 'employed_rider':
+            return None
+
+        boss = user.registered_by
+        if not boss:
+            return None
+
+        from django.utils import timezone
+        from datetime import timedelta
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        from rides.models import RideRequest
+        today_rides = RideRequest.objects.filter(
+            rider=user, status='completed', completed_at__gte=today_start
+        )
+        today_gross = float(sum(r.final_fare or r.total_fare or r.base_fare for r in today_rides))
+
+        # Get today's submissions to boss
+        try:
+            from fleet.models import DailyFeeSubmission
+            today_subs = DailyFeeSubmission.objects.filter(
+                rider=user, submission_date=today_start.date()
+            )
+            today_submitted = float(sum(s.amount_tzs for s in today_subs))
+
+            # Weekly history
+            week_start = today_start - timedelta(days=6)
+            weekly_subs = DailyFeeSubmission.objects.filter(
+                rider=user, submission_date__gte=week_start.date()
+            ).order_by('-submission_date')
+            weekly_submitted = float(sum(s.amount_tzs for s in weekly_subs))
+
+            # Consistency: days with at least one submission in last 30 days
+            thirty_start = today_start - timedelta(days=29)
+            month_subs = DailyFeeSubmission.objects.filter(
+                rider=user, submission_date__gte=thirty_start.date()
+            )
+            days_with_submission = month_subs.values('submission_date').distinct().count()
+            consistency = min(100, round((days_with_submission / 30) * 100))
+
+            history = [
+                SubmissionSummaryType(
+                    date=str(s.submission_date),
+                    amount_tzs=float(s.amount_tzs),
+                    status=s.status
+                )
+                for s in weekly_subs[:14]
+            ]
+        except Exception:
+            today_submitted = 0.0
+            weekly_submitted = 0.0
+            consistency = 0
+            history = []
+
+        daily_target = float(user.daily_target_tzs or 0)
+        remaining = max(0, daily_target - today_submitted)
+        net_profit = max(0, today_gross - daily_target)
+
+        return BossReportType(
+            boss_name=boss.full_name,
+            boss_phone=boss.phone,
+            boss_company=boss.company_name or 'N/A',
+            daily_target_tzs=daily_target,
+            today_gross_earnings=today_gross,
+            today_submitted_tzs=today_submitted,
+            today_remaining_to_pay=remaining,
+            today_net_profit=net_profit,
+            weekly_submitted=weekly_submitted,
+            consistency_percent=consistency,
+            submission_history=history
+        )

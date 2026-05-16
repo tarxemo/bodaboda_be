@@ -78,6 +78,7 @@ GRAPHENE = {
 }
 
 AUTHENTICATION_BACKENDS = [
+    'bodaboda_auth.backends.EmailOrPhoneBackend',
     'graphql_jwt.backends.JSONWebTokenBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]

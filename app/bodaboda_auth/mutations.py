@@ -300,23 +300,28 @@ class RegisterRider(graphene.Mutation):
             return RegisterRider(success=False, message="Phone number already registered.")
 
         full_name = kwargs.get('full_name')
-        email = kwargs.get('email', f"{phone}@bodakitaa.com")
+        provided_email = kwargs.get('email', '').strip()
+        email = provided_email if provided_email else f"{phone}@bodakitaa.com"
         password = kwargs.get('password')
 
+        if User.objects.filter(email=email).exists():
+            return RegisterRider(success=False, message="Email already registered.")
+
         user = User.objects.create_user(
-            username=phone,
+            username=email,
             email=email,
             password=password,
             full_name=full_name,
             phone=phone,
-            role='rider',
+            role='employed_rider',
             registered_by=owner,
             license_number=kwargs.get('license_number'),
             nida_number=kwargs.get('nida_number'),
             guarantor_name=kwargs.get('guarantor_name'),
             guarantor_phone=kwargs.get('guarantor_phone')
         )
-        return RegisterRider(success=True, message="Rider registered successfully.", user=user)
+        return RegisterRider(success=True, message="Employed rider registered successfully.", user=user)
+
 
 
 class ToggleRiderSuspension(graphene.Mutation):
@@ -345,6 +350,65 @@ class ToggleRiderSuspension(graphene.Mutation):
         except User.DoesNotExist:
             return ToggleRiderSuspension(success=False, message="Rider not found or not registered by you.")
 
+class SetRiderDailyTarget(graphene.Mutation):
+    """Owner sets the daily amount an employed rider must submit."""
+    class Arguments:
+        rider_id = graphene.Int(required=True)
+        daily_target_tzs = graphene.Float(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, rider_id, daily_target_tzs):
+        owner = info.context.user
+        if not owner.is_authenticated or owner.role != 'owner':
+            return SetRiderDailyTarget(success=False, message="Not authorized.")
+        try:
+            rider = User.objects.get(pk=rider_id, registered_by=owner)
+            rider.daily_target_tzs = daily_target_tzs
+            rider.save()
+            return SetRiderDailyTarget(success=True, message="Daily target updated.")
+        except User.DoesNotExist:
+            return SetRiderDailyTarget(success=False, message="Rider not found.")
+
+
+class ContactUs(graphene.Mutation):
+    class Arguments:
+        first_name = graphene.String(required=True)
+        last_name = graphene.String(required=True)
+        email = graphene.String(required=True)
+        message = graphene.String(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, first_name, last_name, email, message):
+        try:
+            from django.core.mail import EmailMessage
+            from django.conf import settings
+            
+            email_body = f"""
+New Contact Message from BodaKitaa
+
+Name: {first_name} {last_name}
+Email: {email}
+
+Message:
+{message}
+"""
+            msg = EmailMessage(
+                subject=f"New Contact from {first_name} {last_name}",
+                body=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=['bodakitaa360@gmail.com'],
+                reply_to=[email]
+            )
+            msg.send(fail_silently=False)
+            
+            return ContactUs(success=True, message="Message sent successfully.")
+        except Exception as e:
+            return ContactUs(success=False, message=str(e))
+
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
@@ -352,5 +416,7 @@ class Mutation(graphene.ObjectType):
     register = Register.Field()
     register_rider = RegisterRider.Field()
     toggle_rider_suspension = ToggleRiderSuspension.Field()
+    set_rider_daily_target = SetRiderDailyTarget.Field()
     request_password_reset = RequestPasswordReset.Field()
     confirm_password_reset = ConfirmPasswordReset.Field()
+    contact_us = ContactUs.Field()

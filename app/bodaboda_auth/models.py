@@ -5,7 +5,8 @@ from django.contrib.auth.models import AbstractUser
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('client', 'Passenger'),
-        ('rider', 'Rider (Driver)'),
+        ('rider', 'Rider (Independent)'),
+        ('employed_rider', 'Rider (Employed by Owner)'),
         ('owner', 'Fleet Owner'),
         ('admin', 'Super Admin'),
     )
@@ -44,6 +45,9 @@ class CustomUser(AbstractUser):
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=5.00)
     total_trips = models.PositiveIntegerField(default=0)
     is_suspended = models.BooleanField(default=False)
+
+    # Employed Rider: daily amount owed to owner (set by owner)
+    daily_target_tzs = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.username} ({self.role})"
